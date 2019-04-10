@@ -88,12 +88,14 @@ const uint8_t termometr[] PROGMEM = {
   0x27, 0x20, 0x6F, 0xB0, 0x6F, 0xB0, 0x67, 0x30, 0x32, 0x60, 0x18, 0xC0, 0x0F, 0x80, 0x07, 0x00
 };
 
+
 const uint8_t aku05[] PROGMEM = {
   0x07, 0xE0, 0x07, 0xE0, 0x3F, 0xFC, 0x60, 0x06, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03,
   0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03,
   0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03,
   0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0x7F, 0xFE, 0x3F, 0xFC
 };
+
 
 float temperature;
 char temperatureString[6] = "-";
@@ -106,6 +108,8 @@ float vout = 0.0;
 float vin = 0.0;
 int analogInput = 0; // POMIAR NAPIĘCIA NA A0
 char napieciestr[6] = "-";
+int wystemp = 0;
+float wysnap = 0;
 
 void setup() {
   rtc.begin();
@@ -131,12 +135,14 @@ void loop() {
   {
   dtostrf(temperature, 2, 1, temperatureString);
   }
+  wystemp = temperature / 2;
 
 
   wartosc = analogRead(analogInput);
   vout = (wartosc * 4.93) / 1024.0; //4.74 = Wartość napięcia między AREF a GND
   vin = vout / (R2 / (R1 + R2));
   dtostrf(vin, 2, 1, napieciestr);
+  wysnap = (vin * 11) - (110 + (vin * 1.9));
   
   
   u8g.firstPage();
@@ -146,11 +152,50 @@ void loop() {
     u8g.setFont(u8g_font_fub11);
     u8g.drawStr( 0, 11, rtc.getTimeStr());
     u8g.drawStr( 62, 11, rtc.getDateStr());
-    u8g.drawBitmapP( 0, 17, 2, 32, termometr);
     u8g.setFont(u8g_font_fub17n);
-    u8g.drawStr( 15, 40,  temperatureString);
-    u8g.drawBitmapP( 63, 17, 2, 32, aku05);
-    u8g.drawStr( 81, 40, napieciestr);
+    if (temperature > 38)
+    {
+      u8g.drawBitmapP( 0, 17, 2, 32, termometr);
+      u8g.drawStr( 15, 40,  temperatureString);
+      u8g.drawLine(6, 38, 6, 23);
+    }
+    else if (temperature < -5)
+    {
+      u8g.drawBitmapP( 0, 17, 2, 32, termometr);
+      u8g.drawStr( 15, 40,  temperatureString);
+
+    }
+    else
+    {
+      u8g.drawBitmapP( 0, 17, 2, 32, termometr);
+      u8g.drawStr( 15, 40,  temperatureString);
+      u8g.drawLine(6, 38, 6, 38 - wystemp);
+    }
+    if (vin > 14.7)
+    {
+      u8g.drawBitmapP( 63, 17, 2, 32, aku05);
+      u8g.drawStr( 81, 40, napieciestr);
+      u8g.drawBox(68,41,6,4);
+      u8g.drawBox(68,23,6,15);
+    }
+    else if (vin < 12)
+    {
+      u8g.drawBitmapP( 63, 17, 2, 32, aku05);
+      u8g.drawStr( 81, 40, napieciestr);
+    }
+    else
+    {
+      u8g.drawBitmapP( 63, 17, 2, 32, aku05);
+      u8g.drawStr( 81, 40, napieciestr);
+      u8g.drawLine(67, 45, 67, 45 - wysnap);
+      u8g.drawLine(68, 45, 68, 45 - wysnap);
+      u8g.drawLine(69, 45, 69, 45 - wysnap);
+      u8g.drawLine(70, 45, 70, 45 - wysnap);
+      u8g.drawLine(71, 45, 71, 45 - wysnap);
+      u8g.drawLine(72, 45, 72, 45 - wysnap);
+      u8g.drawLine(73, 45, 73, 45 - wysnap);
+      u8g.drawLine(74, 45, 74, 45 - wysnap);
+    }
   } while ( u8g.nextPage() );
 
   delay(500);
