@@ -2,6 +2,8 @@
 #include <DS3231.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <TinyGPS++.h>
+#include <SoftwareSerial.h>
 
 U8GLIB_ST7920_128X64_4X u8g(11, 10, 9);
 //RS - D9 
@@ -13,6 +15,22 @@ DS3231  rtc(A4, A5);
 #define ONE_WIRE_BUS 8                  // DS POD D8
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
+
+static const int RXPin = 4, TXPin = 3;
+static const uint32_t GPSBaud = 9600;
+TinyGPSPlus gps;
+SoftwareSerial ss(RXPin, TXPin, false);
+static const double DOM_LAT = 51.712428, DOM_LON = 19.448561;
+
+static void smartDelay(unsigned long ms)
+{
+  unsigned long start = millis();
+  do 
+  {
+    while (ss.available())
+      gps.encode(ss.read());
+  } while (millis() - start < ms);
+}
 
 const uint8_t honda[] PROGMEM = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -99,6 +117,9 @@ const uint8_t aku05[] PROGMEM = {
 
 float temperature;
 char temperatureString[6] = "-";
+char wyswysokosc[6] = "-";
+char wyspredkosc[6] = "-";
+char wysdom[6] = "-";
 
 float R1 = 4660; // Prawdziwa rezystancja R1 (4,7K)
 float R2 = 1995; // Prawdziwa rezystancja R2 (2K)
@@ -110,12 +131,23 @@ int analogInput = 0; // POMIAR NAPIĘCIA NA A0
 char napieciestr[6] = "-";
 int wystemp = 0;
 float wysnap = 0;
+int wybor = 0;
+int predkosc = 0;
+float dodomu=0.0;
+int wysokosc = 0;
+int counter=0;
+int counter2=0;
+
+const int buttonPin = 2;
+int buttonState = 0;
 
 void setup() {
   rtc.begin();
   sensors.begin();
   sensors.setResolution(0, 10);
   pinMode(analogInput, INPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
+  ss.begin(GPSBaud);
   u8g.firstPage();
   do {
     u8g.drawBitmapP( 0, 0, 16, 64, honda);
@@ -124,9 +156,16 @@ void setup() {
 }
 
 void loop() {
+
+  counter++;
+  counter2++;
   
-  temperature = sensors.getTempCByIndex(0);
-  sensors.requestTemperatures();
+  if(counter>30)
+  {
+    sensors.requestTemperatures();
+    temperature = sensors.getTempCByIndex(0);
+    counter=0;
+  }
   if(temperature<-9.9)
   {
     dtostrf(temperature, 2, 0, temperatureString);
@@ -143,6 +182,31 @@ void loop() {
   vin = vout / (R2 / (R1 + R2));
   dtostrf(vin, 2, 1, napieciestr);
   wysnap = (vin * 11) - (110 + (vin * 1.9));
+
+  wysokosc = gps.altitude.meters();
+  dtostrf(wysokosc, 4, 0, wyswysokosc);
+  predkosc = gps.speed.kmph();
+  if (predkosc<3)
+  {
+    predkosc = 0;
+  }
+  dtostrf(predkosc, 3, 0, wyspredkosc);
+  unsigned long distanceToDom =
+    (unsigned long)TinyGPSPlus::distanceBetween(
+      gps.location.lat(),
+      gps.location.lng(),
+      DOM_LAT, 
+      DOM_LON);
+
+  dodomu = distanceToDom/1000.0;
+  if(dodomu<10.0)
+  {
+    dtostrf(dodomu, 4, 1, wysdom); 
+  }
+  else
+  {
+  dtostrf(dodomu, 4, 0, wysdom); 
+  }
   
   
   u8g.firstPage();
@@ -196,8 +260,46 @@ void loop() {
       u8g.drawLine(73, 45, 73, 45 - wysnap);
       u8g.drawLine(74, 45, 74, 45 - wysnap);
     }
+
+    buttonState = digitalRead(buttonPin);
+     
+     switch (wybor)
+     {
+       case 0:
+       u8g.setFont(u8g_font_fub11);
+       u8g.drawStr( 0, 64, "Predk: ");
+       u8g.drawStr( 52, 64, wyspredkosc);
+       u8g.drawStr( 89, 64, "km/h");
+       if(buttonState == LOW && counter2>1)
+       {
+          wybor = 1;
+          counter2=0;
+       }
+       break;
+       case 1:
+       u8g.setFont(u8g_font_fub11);
+       u8g.drawStr( 12, 64, wyswysokosc);
+       u8g.drawStr( 50, 62, "m n.p.m.");
+       if(buttonState == LOW && counter2>1)
+       {
+          wybor = 2;
+          counter2=0;
+       }
+       break;
+       case 2:
+       u8g.setFont(u8g_font_fub11);
+       u8g.drawStr( 0, 64, "Do domu");
+       u8g.drawStr( 70, 64, wysdom);
+       u8g.drawStr( 106, 64, "km");
+       if(buttonState == LOW && counter2>1)
+       {
+          wybor = 0;
+          counter2=0;
+       }
+       break;
+     }
   } while ( u8g.nextPage() );
 
-  delay(500);
+  smartDelay(500);
 
 }
