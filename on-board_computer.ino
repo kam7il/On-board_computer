@@ -6,7 +6,7 @@
 #include <SoftwareSerial.h>
 
 U8GLIB_ST7920_128X64_4X u8g(11, 10, 9);
-//RS - D9 
+//RS - D9
 //R/W - D10
 //E - D11
 
@@ -25,7 +25,7 @@ static const double DOM_LAT = 51.712428, DOM_LON = 19.448561;
 static void smartDelay(unsigned long ms)
 {
   unsigned long start = millis();
-  do 
+  do
   {
     while (ss.available())
       gps.encode(ss.read());
@@ -114,6 +114,25 @@ const uint8_t aku05[] PROGMEM = {
   0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0x7F, 0xFE, 0x3F, 0xFC
 };
 
+const uint8_t krolik[] PROGMEM = {
+  0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x1C, 0x00, 0x00, 0x16, 0x00, 0x3E, 0x13, 0x00, 0x00,
+  0x19, 0x00, 0x00, 0x19, 0x80, 0x0F, 0x08, 0xC0, 0x00, 0x0C, 0x60, 0x00, 0x0C, 0x20, 0x1F, 0x86,
+  0x30, 0x00, 0x02, 0x18, 0x00, 0x03, 0x0C, 0x01, 0xFF, 0x84, 0x07, 0x80, 0x36, 0x0E, 0x00, 0x23,
+  0x18, 0x00, 0x01, 0x31, 0x80, 0x03, 0x31, 0xC0, 0x7E, 0x20, 0x61, 0xE0, 0x60, 0x23, 0x80, 0x40,
+  0x36, 0x00, 0x40, 0x1C, 0x00, 0x40, 0x3F, 0x00, 0x40, 0x3F, 0x80, 0x40, 0x00, 0x80, 0x7F, 0xFF,
+  0x80, 0x06, 0xC0, 0x00, 0x0D, 0x80, 0x00, 0x0B, 0x00, 0x00, 0x0A, 0x00, 0x00, 0x0E, 0x00, 0x00
+};
+
+const uint8_t gora[] PROGMEM = {
+  0x00, 0x10, 0x00, 0x00, 0x18, 0x00, 0x00, 0x3C, 0x00, 0x00, 0x24, 0x00, 0x00, 0x24, 0x00, 0x00,
+  0x66, 0x00, 0x00, 0x42, 0x00, 0x00, 0x42, 0x00, 0x00, 0xC3, 0x00, 0x00, 0x81, 0x00, 0x01, 0x81,
+  0x80, 0x01, 0x00, 0x80, 0x01, 0x00, 0x80, 0x03, 0x00, 0xC0, 0x02, 0x00, 0x40, 0x02, 0x1C, 0x40,
+  0x07, 0x1F, 0x60, 0x07, 0xBF, 0xE0, 0x0F, 0xFF, 0xF0, 0x0F, 0xFF, 0xF0, 0x0F, 0xFF, 0xF0, 0x1F,
+  0xFF, 0xF8, 0x1F, 0xFF, 0xF8, 0x1F, 0xFF, 0xF8, 0x3F, 0xFF, 0xFC, 0x3F, 0xFF, 0xFC, 0x7F, 0xFF,
+  0xFE, 0x7F, 0xFF, 0xFE, 0x7F, 0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+};
+
+
 
 float temperature;
 char temperatureString[6] = "-";
@@ -127,16 +146,16 @@ float R2 = 1995; // Prawdziwa rezystancja R2 (2K)
 float wartosc = 0;
 float vout = 0.0;
 float vin = 0.0;
-int analogInput = 0; // POMIAR NAPIĘCIA NA A0
+int analogInput = 0; // POMIAR NAPIÄ�CIA NA A0
 char napieciestr[6] = "-";
 int wystemp = 0;
 float wysnap = 0;
 int wybor = 0;
 int predkosc = 0;
-float dodomu=0.0;
+float dodomu = 0.0;
 int wysokosc = 0;
-int counter=0;
-int counter2=0;
+int counter = 0;
+int counter2 = 0;
 
 const int buttonPin = 2;
 int buttonState = 0;
@@ -148,6 +167,10 @@ void setup() {
   pinMode(analogInput, INPUT);
   pinMode(buttonPin, INPUT_PULLUP);
   ss.begin(GPSBaud);
+  sensors.requestTemperatures();
+  temperature = sensors.getTempCByIndex(0);
+  sensors.requestTemperatures();
+  temperature = sensors.getTempCByIndex(0);
   u8g.firstPage();
   do {
     u8g.drawBitmapP( 0, 0, 16, 64, honda);
@@ -159,26 +182,26 @@ void loop() {
 
   counter++;
   counter2++;
-  
-  if(counter>30)
+
+  if (counter > 30)
   {
     sensors.requestTemperatures();
     temperature = sensors.getTempCByIndex(0);
-    counter=0;
+    counter = 0;
   }
-  if(temperature<-9.9)
+  if (temperature < -9.9)
   {
     dtostrf(temperature, 2, 0, temperatureString);
   }
   else
   {
-  dtostrf(temperature, 2, 1, temperatureString);
+    dtostrf(temperature, 2, 1, temperatureString);
   }
   wystemp = temperature / 2;
 
 
   wartosc = analogRead(analogInput);
-  vout = (wartosc * 4.93) / 1024.0; //4.74 = Wartość napięcia między AREF a GND
+  vout = (wartosc * 4.93) / 1024.0; //4.74 = WartoĹ›Ä‡ napiÄ™cia miÄ™dzy AREF a GND
   vin = vout / (R2 / (R1 + R2));
   dtostrf(vin, 2, 1, napieciestr);
   wysnap = (vin * 11) - (110 + (vin * 1.9));
@@ -186,7 +209,7 @@ void loop() {
   wysokosc = gps.altitude.meters();
   dtostrf(wysokosc, 4, 0, wyswysokosc);
   predkosc = gps.speed.kmph();
-  if (predkosc<3)
+  if (predkosc < 3)
   {
     predkosc = 0;
   }
@@ -195,111 +218,105 @@ void loop() {
     (unsigned long)TinyGPSPlus::distanceBetween(
       gps.location.lat(),
       gps.location.lng(),
-      DOM_LAT, 
+      DOM_LAT,
       DOM_LON);
 
-  dodomu = distanceToDom/1000.0;
-  if(dodomu<10.0)
-  {
-    dtostrf(dodomu, 4, 1, wysdom); 
-  }
-  else
-  {
-  dtostrf(dodomu, 4, 0, wysdom); 
-  }
+  dodomu = distanceToDom / 1000.0;
+  dtostrf(dodomu, 4, 1, wysdom);
   
-  
-  u8g.firstPage();
-  do {
-    u8g.drawLine(0, 13, 128, 13);
-    u8g.drawLine(0, 51, 128, 51);
-    u8g.setFont(u8g_font_fub11);
-    u8g.drawStr( 0, 11, rtc.getTimeStr());
-    u8g.drawStr( 62, 11, rtc.getDateStr());
-    u8g.setFont(u8g_font_fub17n);
-    if (temperature > 38)
-    {
-      u8g.drawBitmapP( 0, 17, 2, 32, termometr);
-      u8g.drawStr( 15, 40,  temperatureString);
-      u8g.drawLine(6, 38, 6, 23);
-    }
-    else if (temperature < -5)
-    {
-      u8g.drawBitmapP( 0, 17, 2, 32, termometr);
-      u8g.drawStr( 15, 40,  temperatureString);
 
-    }
-    else
-    {
-      u8g.drawBitmapP( 0, 17, 2, 32, termometr);
-      u8g.drawStr( 15, 40,  temperatureString);
-      u8g.drawLine(6, 38, 6, 38 - wystemp);
-    }
-    if (vin > 14.7)
-    {
-      u8g.drawBitmapP( 63, 17, 2, 32, aku05);
-      u8g.drawStr( 81, 40, napieciestr);
-      u8g.drawBox(68,41,6,4);
-      u8g.drawBox(68,23,6,15);
-    }
-    else if (vin < 12)
-    {
-      u8g.drawBitmapP( 63, 17, 2, 32, aku05);
-      u8g.drawStr( 81, 40, napieciestr);
-    }
-    else
-    {
-      u8g.drawBitmapP( 63, 17, 2, 32, aku05);
-      u8g.drawStr( 81, 40, napieciestr);
-      u8g.drawLine(67, 45, 67, 45 - wysnap);
-      u8g.drawLine(68, 45, 68, 45 - wysnap);
-      u8g.drawLine(69, 45, 69, 45 - wysnap);
-      u8g.drawLine(70, 45, 70, 45 - wysnap);
-      u8g.drawLine(71, 45, 71, 45 - wysnap);
-      u8g.drawLine(72, 45, 72, 45 - wysnap);
-      u8g.drawLine(73, 45, 73, 45 - wysnap);
-      u8g.drawLine(74, 45, 74, 45 - wysnap);
-    }
+  buttonState = digitalRead(buttonPin);
 
-    buttonState = digitalRead(buttonPin);
-     
-     switch (wybor)
-     {
-       case 0:
-       u8g.setFont(u8g_font_fub11);
-       u8g.drawStr( 0, 64, "Predk: ");
-       u8g.drawStr( 52, 64, wyspredkosc);
-       u8g.drawStr( 89, 64, "km/h");
-       if(buttonState == LOW && counter2>1)
-       {
-          wybor = 1;
-          counter2=0;
-       }
-       break;
-       case 1:
-       u8g.setFont(u8g_font_fub11);
-       u8g.drawStr( 12, 64, wyswysokosc);
-       u8g.drawStr( 50, 62, "m n.p.m.");
-       if(buttonState == LOW && counter2>1)
-       {
-          wybor = 2;
-          counter2=0;
-       }
-       break;
-       case 2:
-       u8g.setFont(u8g_font_fub11);
-       u8g.drawStr( 0, 64, "Do domu");
-       u8g.drawStr( 70, 64, wysdom);
-       u8g.drawStr( 106, 64, "km");
-       if(buttonState == LOW && counter2>1)
-       {
-          wybor = 0;
-          counter2=0;
-       }
-       break;
-     }
-  } while ( u8g.nextPage() );
+  switch (wybor)
+  {
+    case 0:
+      u8g.firstPage();
+      do {
+        u8g.drawLine(0, 13, 128, 13);
+        u8g.drawLine(0, 51, 128, 51);
+        u8g.setFont(u8g_font_fub11);
+        u8g.drawStr( 0, 11, rtc.getTimeStr());
+        u8g.drawStr( 62, 11, rtc.getDateStr());
+        u8g.setFont(u8g_font_fub17n);
+        if (temperature > 38)
+        {
+          u8g.drawBitmapP( 0, 17, 2, 32, termometr);
+          u8g.drawStr( 15, 40,  temperatureString);
+          u8g.drawLine(6, 38, 6, 23);
+        }
+        else if (temperature < -5)
+        {
+          u8g.drawBitmapP( 0, 17, 2, 32, termometr);
+          u8g.drawStr( 15, 40,  temperatureString);
+
+        }
+        else
+        {
+          u8g.drawBitmapP( 0, 17, 2, 32, termometr);
+          u8g.drawStr( 15, 40,  temperatureString);
+          u8g.drawLine(6, 38, 6, 38 - wystemp);
+        }
+        if (vin > 14.7)
+        {
+          u8g.drawBitmapP( 63, 17, 2, 32, aku05);
+          u8g.drawStr( 81, 40, napieciestr);
+          u8g.drawBox(68, 41, 6, 4);
+          u8g.drawBox(68, 23, 6, 15);
+        }
+        else if (vin < 12)
+        {
+          u8g.drawBitmapP( 63, 17, 2, 32, aku05);
+          u8g.drawStr( 81, 40, napieciestr);
+        }
+        else
+        {
+          u8g.drawBitmapP( 63, 17, 2, 32, aku05);
+          u8g.drawStr( 81, 40, napieciestr);
+          u8g.drawLine(67, 45, 67, 45 - wysnap);
+          u8g.drawLine(68, 45, 68, 45 - wysnap);
+          u8g.drawLine(69, 45, 69, 45 - wysnap);
+          u8g.drawLine(70, 45, 70, 45 - wysnap);
+          u8g.drawLine(71, 45, 71, 45 - wysnap);
+          u8g.drawLine(72, 45, 72, 45 - wysnap);
+          u8g.drawLine(73, 45, 73, 45 - wysnap);
+          u8g.drawLine(74, 45, 74, 45 - wysnap);
+        }
+      } while ( u8g.nextPage() );
+      if (buttonState == LOW && counter2 > 1)
+      {
+        wybor = 1;
+        counter2 = 0;
+      }
+      break;
+      case 1:
+      u8g.firstPage();
+      do {
+        u8g.drawLine(0, 13, 128, 13);
+        u8g.drawLine(0, 51, 128, 51);
+        u8g.drawBitmapP( -1, 17, 3, 32, krolik);
+        u8g.drawBitmapP( 62, 17, 3, 32, gora);
+        u8g.setFont(u8g_font_fub11);
+        u8g.drawStr( 0, 11, rtc.getTimeStr());
+        u8g.drawStr( 63, 11, rtc.getDateStr());
+        u8g.drawStr( 0, 64, "DOM:");
+        u8g.drawStr( 49, 64, wysdom);
+        u8g.drawStr( 103, 64, "KM");
+        u8g.setFont(u8g_font_fub14n);
+        u8g.drawStr( 83, 38, wyswysokosc);
+        u8g.setFont(u8g_font_fub17n);
+        u8g.drawStr( 24, 40, wyspredkosc);
+        
+      } while ( u8g.nextPage() );
+      if (buttonState == LOW && counter2 > 1)
+      {
+        wybor = 0;
+        counter2 = 0;
+      }
+  }
+
+
 
   smartDelay(500);
 
 }
+
