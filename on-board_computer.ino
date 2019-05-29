@@ -146,6 +146,17 @@ char wysdom[10] = "-";
 char wyssatelity[10] = " ";
 char wysszerokosc[20] = " ";
 char wysdlugosc[20] = " ";
+char wysgodziny[5] = " ";
+char wysminuty[5] = " ";
+char wyssekundy[5] = " ";
+char wysrok[5] = " ";
+char wysmiesiac[5] = " ";
+char wysdzien[5] = " ";
+
+
+int godziny, minuty, sekundy;
+int rok, miesiac, dzien;
+
 
 float R1 = 4660; // Prawdziwa rezystancja R1 (4,7K)
 float R2 = 1995; // Prawdziwa rezystancja R2 (2K)
@@ -163,10 +174,15 @@ float dodomu = 0.0;
 int wysokosc = 0;
 int counter = 0;
 int counter2 = 0;
+int countermenu = 0;
 int satelity = 0;
 double szerokosc;
 double dlugosc;
+
+
+
 int zapisane = 0;
+int menu = 0;
 
 const int buttonPin = 2;
 int buttonState = 0;
@@ -187,7 +203,7 @@ void setup() {
   buttonState = digitalRead(buttonPin);
   if (buttonState == LOW)
   {
-    wybor = 2;
+    wybor = 3;
   }
 }
 
@@ -291,106 +307,219 @@ void loop() {
       }
       break;
     case 1:
-    {
-
-      if (gps.location.isValid() == 1)
       {
-      
-      dtostrf(gps.altitude.meters(), 7, 0, wyswysokosc);
 
-      predkosc=gps.speed.kmph();
-      if(predkosc<3)
-      {
-        predkosc=0.0;
-      }
-      dtostrf(predkosc, 6, 0, wyspredkosc);
-
-      unsigned long distanceToDom =
-        (unsigned long)TinyGPSPlus::distanceBetween(
-          gps.location.lat(),
-          gps.location.lng(),
-          DOM_LAT,
-          DOM_LON);
-      dodomu = distanceToDom / 1000.0;
-      dtostrf(dodomu, 4, 1, wysdom);
-      }
-      smartDelay(500);
-
-      u8g.firstPage();
-      do {
-        u8g.drawLine(0, 13, 128, 13);
-        u8g.drawLine(0, 51, 128, 51);
-        u8g.drawBitmapP( -1, 17, 3, 32, krolik);
-        u8g.drawBitmapP( 62, 17, 3, 32, gora);
-        u8g.setFont(u8g_font_5x8r);
-        u8g.drawStr( 28, 48,  "KM/H");
-        u8g.drawStr( 89, 48,  "M N.P.M.");
-        u8g.setFont(u8g_font_fub11);
-        u8g.drawStr( 0, 11, rtc.getTimeStr());
-        u8g.drawStr( 63, 11, rtc.getDateStr());
-        u8g.drawStr( 0, 64, "DOM:");
-        u8g.drawStr( 49, 64, wysdom);
-        u8g.drawStr( 103, 64, "KM");
-        u8g.setFont(u8g_font_fub14n);
-        u8g.drawStr( 83, 38, wyswysokosc);
-        u8g.setFont(u8g_font_fub17n);
-        u8g.drawStr( 24, 39, wyspredkosc);
-
-      } while ( u8g.nextPage() );
-      if (buttonState == LOW && counter2 > 5)
-      {
-        wybor = 0;
-        counter2 = 0;
-      }
-      
-      break;
-    }
-    case 2:
-      if (gps.location.isValid() == 1)
-      {
-      dtostrf(gps.satellites.value(), 5, 0, wyssatelity);
-      
-      dtostrf( gps.location.lat(), 11, 6, wysszerokosc);
-      
-      dtostrf(gps.location.lng(), 12, 6, wysdlugosc);
-      }
-      smartDelay(500);
-
-
-      u8g.firstPage();
-      do {
-        u8g.setFont(u8g_font_fub11);
-        u8g.drawStr( 5, 11, "UKRYTE MENU");
-        u8g.setFont(u8g_font_5x8r);
-        u8g.drawStr( 12, 19, "Liczba satelit GPS:");
-        u8g.drawStr( 94, 19, wyssatelity);
-        u8g.drawStr( 6, 27, "Twoja aktualna pozycja:");
-        u8g.drawStr( 0, 36, "SZ:");
-        u8g.drawStr( 7, 36, wysszerokosc);
-        u8g.drawStr( 66, 36, "DL:");
-        u8g.drawStr( 68, 36, wysdlugosc);
-        if (zapisane == 0)
+        if (gps.location.isValid() == 1)
         {
-          u8g.drawStr( 4, 47, "ABY ZAPISAC NOWA POZYCJE");
-          u8g.drawStr( 2, 55, "DOMU PRZYTRZYMAJ PRZYCISK");
-          u8g.drawStr( 27, 63, "PRZEZ 3 SEKUNDY");
+
+          dtostrf(gps.altitude.meters(), 7, 0, wyswysokosc);
+
+          predkosc = gps.speed.kmph();
+          if (predkosc < 3)
+          {
+            predkosc = 0.0;
+          }
+          dtostrf(predkosc, 6, 0, wyspredkosc);
+
+          unsigned long distanceToDom =
+            (unsigned long)TinyGPSPlus::distanceBetween(
+              gps.location.lat(),
+              gps.location.lng(),
+              DOM_LAT,
+              DOM_LON);
+          dodomu = distanceToDom / 1000.0;
+          dtostrf(dodomu, 4, 1, wysdom);
         }
-        else
+        smartDelay(500);
+
+        u8g.firstPage();
+        do {
+          u8g.drawLine(0, 13, 128, 13);
+          u8g.drawLine(0, 51, 128, 51);
+          u8g.drawBitmapP( -1, 17, 3, 32, krolik);
+          u8g.drawBitmapP( 62, 17, 3, 32, gora);
+          u8g.setFont(u8g_font_5x8r);
+          u8g.drawStr( 28, 48,  "KM/H");
+          u8g.drawStr( 89, 48,  "M N.P.M.");
+          u8g.setFont(u8g_font_fub11);
+          u8g.drawStr( 0, 11, rtc.getTimeStr());
+          u8g.drawStr( 63, 11, rtc.getDateStr());
+          u8g.drawStr( 0, 64, "DOM:");
+          u8g.drawStr( 49, 64, wysdom);
+          u8g.drawStr( 103, 64, "KM");
+          u8g.setFont(u8g_font_fub14n);
+          u8g.drawStr( 83, 38, wyswysokosc);
+          u8g.setFont(u8g_font_fub17n);
+          u8g.drawStr( 24, 39, wyspredkosc);
+
+        } while ( u8g.nextPage() );
+        if (buttonState == LOW && counter2 > 5)
         {
-          u8g.drawStr( 10, 53, "ZAPISONO NOWA POZYCJE!");
+          wybor = 0;
+          counter2 = 0;
         }
-      } while ( u8g.nextPage() );
-      if (buttonState == LOW && counter2 > 5)
-      {
-        delay(2000);
-        if (buttonState == LOW)
+
+        break;
+      case 2:
+        if (gps.location.isValid() == 1)
         {
-          szerokosc= gps.location.lat();
-          dlugosc=gps.location.lng();
-          EEPROM.updateDouble(0, szerokosc);
-          EEPROM.updateDouble(32, dlugosc);
-          zapisane = 1;
+          dtostrf(gps.satellites.value(), 5, 0, wyssatelity);
+
+          dtostrf( gps.location.lat(), 11, 6, wysszerokosc);
+
+          dtostrf(gps.location.lng(), 12, 6, wysdlugosc);
         }
+        smartDelay(500);
+
+
+        u8g.firstPage();
+        do {
+          u8g.setFont(u8g_font_fub11);
+          u8g.drawStr( 3, 11, "USTAW. DOMU");
+          u8g.setFont(u8g_font_5x8r);
+          u8g.drawStr( 12, 19, "Liczba satelit GPS:");
+          u8g.drawStr( 90, 19, wyssatelity);
+          u8g.drawStr( 6, 27, "Twoja aktualna pozycja:");
+          u8g.drawStr( 0, 36, "SZ:");
+          u8g.drawStr( 7, 36, wysszerokosc);
+          u8g.drawStr( 66, 36, "DL:");
+          u8g.drawStr( 68, 36, wysdlugosc);
+          if (zapisane == 0)
+          {
+            u8g.drawStr( 4, 47, "ABY ZAPISAC NOWA POZYCJE");
+            u8g.drawStr( 2, 55, "DOMU PRZYTRZYMAJ PRZYCISK");
+            u8g.drawStr( 27, 63, "PRZEZ 3 SEKUNDY");
+          }
+          else
+          {
+            u8g.drawStr( 10, 53, "ZAPISONO NOWA POZYCJE!");
+          }
+        } while ( u8g.nextPage() );
+        if (buttonState == LOW && counter2 > 5)
+        {
+          delay(1900);
+          if (buttonState == LOW)
+          {
+            szerokosc = gps.location.lat();
+            dlugosc = gps.location.lng();
+            EEPROM.updateDouble(0, szerokosc);
+            EEPROM.updateDouble(32, dlugosc);
+            zapisane = 1;
+          }
+        }
+        break;
+      case 3:
+        u8g.firstPage();
+        do {
+          u8g.setFont(u8g_font_fub11);
+          u8g.drawStr( 12, 11, "USTAWIENIA");
+          u8g.setFont(u8g_font_5x8r);
+          u8g.drawStr( 24, 24, "1. Pozycja domu");
+          u8g.drawStr( 20, 38, "2. Data i godzina");
+          u8g.drawStr( 40, 63, "2019 V0.9");
+          if (menu == 0)
+          {
+            u8g.drawStr( 102, 24, "<--");
+          }
+          else
+          {
+            u8g.drawStr( 110, 38, "<--");
+          }
+        } while ( u8g.nextPage() );
+        if (buttonState == LOW && counter2 > 5)
+        {
+          counter2 = 0;
+          if (menu == 0)
+          {
+            menu = 1;
+            countermenu = 0;
+          }
+          else
+          {
+            menu = 0;
+            countermenu = 0;
+          }
+
+        }
+        countermenu++;
+        if (countermenu > 50)
+        {
+          if (menu == 0)
+          {
+            wybor = 2;
+          }
+          else
+          {
+            wybor = 4;
+          }
+        }
+
+        break;
+      case 4:
+        u8g.firstPage();
+        do {
+          u8g.setFont(u8g_font_5x8r);
+          u8g.drawStr(1, 6, "USTAWIENIA DATY I GODZINY");
+          u8g.drawStr( 12, 14, "Liczba satelit GPS:");
+          u8g.drawStr( 90, 14, wyssatelity);
+          u8g.drawStr( 20, 26, "Godzina:");
+          u8g.drawStr( 62, 26, wysgodziny);
+          u8g.drawStr( 72, 26, ":");
+          u8g.drawStr( 77, 26, wysminuty);
+          u8g.drawStr( 87, 26, ":");
+          u8g.drawStr( 92, 26, wyssekundy);
+          u8g.drawStr( 22, 34, "Data:");
+          u8g.drawStr( 50, 34, wysdzien);
+          u8g.drawStr( 60, 34, "/");
+          u8g.drawStr( 65, 34, wysmiesiac);
+          u8g.drawStr( 75, 34, "/");
+          u8g.drawStr( 80, 34, wysrok);
+          if (zapisane == 0)
+          {
+            u8g.drawStr( 24, 47, "ABY ZAPISAC DATE");
+            u8g.drawStr( 12, 55, "I GODZINE PRZYTRZYMAJ");
+            u8g.drawStr( 4, 63, "PRZYCISK PRZEZ 3 SEKUNDY");
+          }
+          else
+          {
+            u8g.drawStr( 5, 53, "ZAPISONO DATE I GODZINE!");
+          }
+
+
+        } while ( u8g.nextPage() );
+        smartDelay(900);
+
+        godziny = gps.time.hour() + 2;
+        if (godziny > 23) {
+          godziny = godziny - 24;
+        }
+        
+        minuty = gps.time.minute();
+        sekundy = gps.time.second();
+
+        rok = gps.date.year();
+        miesiac = gps.date.month();
+        dzien = gps.date.day();
+
+        dtostrf(gps.satellites.value(), 5, 0, wyssatelity);
+        dtostrf(godziny, 2, 0, wysgodziny);
+        dtostrf(minuty, 2, 0, wysminuty);
+        dtostrf(sekundy, 2, 0, wyssekundy);
+        dtostrf(rok, 4, 0, wysrok);
+        dtostrf(miesiac, 2, 0, wysmiesiac);
+        dtostrf(dzien, 2, 0, wysdzien);
+
+        if (buttonState == LOW && counter2 > 5)
+        {
+          delay(1300);
+          if (buttonState == LOW)
+          {
+            rtc.setTime(godziny, minuty, sekundy);
+            rtc.setDate(dzien, miesiac, rok);
+            zapisane = 1;
+          }
+        }
+
       }
       break;
   }
