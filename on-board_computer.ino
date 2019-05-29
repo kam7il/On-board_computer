@@ -1,26 +1,28 @@
 #include "U8glib.h"
 #include <DS3231.h>
 #include <OneWire.h>
-#include <DallasTemperature.h>
 #include <TinyGPS++.h>
 #include <SoftwareSerial.h>
+#include <EEPROMex.h>
+#include "DHT.h"
 
-U8GLIB_ST7920_128X64_4X u8g(11, 10, 9);
+U8GLIB_ST7920_128X64_1X u8g(11, 10, 9);
 //RS - D9
 //R/W - D10
 //E - D11
 
-DS3231  rtc(A4, A5);
+#define DHTPIN 8
+#define DHTTYPE DHT11
 
-#define ONE_WIRE_BUS 8                  // DS POD D8
-OneWire oneWire(ONE_WIRE_BUS);
-DallasTemperature sensors(&oneWire);
+DS3231  rtc(A4, A5);
+DHT dht(DHTPIN, DHTTYPE);
 
 static const int RXPin = 4, TXPin = 3;
 static const uint32_t GPSBaud = 9600;
 TinyGPSPlus gps;
 SoftwareSerial ss(RXPin, TXPin, false);
-static const double DOM_LAT = 51.712428, DOM_LON = 19.448561;
+
+double DOM_LAT = 0.0, DOM_LON = 0.0;
 
 static void smartDelay(unsigned long ms)
 {
@@ -135,10 +137,15 @@ const uint8_t gora[] PROGMEM = {
 
 
 float temperature;
+float wilgotnosc;
 char temperatureString[6] = "-";
-char wyswysokosc[6] = "-";
-char wyspredkosc[6] = "-";
-char wysdom[6] = "-";
+char wilgstr[6] = "-";
+char wyswysokosc[10] = "-";
+char wyspredkosc[10] = "-";
+char wysdom[10] = "-";
+char wyssatelity[10] = " ";
+char wysszerokosc[20] = " ";
+char wysdlugosc[20] = " ";
 
 float R1 = 4660; // Prawdziwa rezystancja R1 (4,7K)
 float R2 = 1995; // Prawdziwa rezystancja R2 (2K)
@@ -151,31 +158,37 @@ char napieciestr[6] = "-";
 int wystemp = 0;
 float wysnap = 0;
 int wybor = 0;
-int predkosc = 0;
+float predkosc = 0;
 float dodomu = 0.0;
 int wysokosc = 0;
 int counter = 0;
 int counter2 = 0;
+int satelity = 0;
+double szerokosc;
+double dlugosc;
+int zapisane = 0;
 
 const int buttonPin = 2;
 int buttonState = 0;
 
 void setup() {
   rtc.begin();
-  sensors.begin();
-  sensors.setResolution(0, 10);
+  dht.begin();
   pinMode(analogInput, INPUT);
   pinMode(buttonPin, INPUT_PULLUP);
   ss.begin(GPSBaud);
-  sensors.requestTemperatures();
-  temperature = sensors.getTempCByIndex(0);
-  sensors.requestTemperatures();
-  temperature = sensors.getTempCByIndex(0);
+  DOM_LAT = EEPROM.readDouble(0);
+  DOM_LON = EEPROM.readDouble(32);
   u8g.firstPage();
   do {
     u8g.drawBitmapP( 0, 0, 16, 64, honda);
   } while ( u8g.nextPage() );
   delay(3000);
+  buttonState = digitalRead(buttonPin);
+  if (buttonState == LOW)
+  {
+    wybor = 2;
+  }
 }
 
 void loop() {
@@ -183,95 +196,83 @@ void loop() {
   counter++;
   counter2++;
 
-  if (counter > 30)
-  {
-    sensors.requestTemperatures();
-    temperature = sensors.getTempCByIndex(0);
-    counter = 0;
-  }
-  if (temperature < -9.9)
-  {
-    dtostrf(temperature, 2, 0, temperatureString);
-  }
-  else
-  {
-    dtostrf(temperature, 2, 1, temperatureString);
-  }
-  wystemp = temperature / 2;
-
-
-  wartosc = analogRead(analogInput);
-  vout = (wartosc * 4.93) / 1024.0; //4.74 = WartoĹ›Ä‡ napiÄ™cia miÄ™dzy AREF a GND
-  vin = vout / (R2 / (R1 + R2));
-  dtostrf(vin, 2, 1, napieciestr);
-  wysnap = (vin * 11) - (110 + (vin * 1.9));
-
-  wysokosc = gps.altitude.meters();
-  dtostrf(wysokosc, 4, 0, wyswysokosc);
-  predkosc = gps.speed.kmph();
-  if (predkosc < 3)
-  {
-    predkosc = 0;
-  }
-  dtostrf(predkosc, 3, 0, wyspredkosc);
-  unsigned long distanceToDom =
-    (unsigned long)TinyGPSPlus::distanceBetween(
-      gps.location.lat(),
-      gps.location.lng(),
-      DOM_LAT,
-      DOM_LON);
-
-  dodomu = distanceToDom / 1000.0;
-  dtostrf(dodomu, 4, 1, wysdom);
-  
-
   buttonState = digitalRead(buttonPin);
 
   switch (wybor)
   {
     case 0:
+      if (counter > 10)
+      {
+        temperature = dht.readTemperature();
+        wilgotnosc = dht.readHumidity();
+        dtostrf(wilgotnosc, 3, 0, wilgstr);
+        counter = 0;
+      }
+      if (temperature < -9.9)
+      {
+        dtostrf(temperature, 2, 0, temperatureString);
+      }
+      else
+      {
+        dtostrf(temperature, 2, 1, temperatureString);
+      }
+      wystemp = temperature / 2;
+
+      wartosc = analogRead(analogInput);
+      vout = (wartosc * 4.93) / 1024.0; //4.74 = WartoĹ›Ä‡ napiÄ™cia miÄ™dzy AREF a GND
+      vin = vout / (R2 / (R1 + R2));
+      dtostrf(vin, 2, 1, napieciestr);
+      wysnap = (vin * 11) - (110 + (vin * 1.9));
+
+
       u8g.firstPage();
       do {
         u8g.drawLine(0, 13, 128, 13);
         u8g.drawLine(0, 51, 128, 51);
+        u8g.setFont(u8g_font_5x8r);
+        u8g.drawStr( 16, 48,  "CELSJUSZA");
+        u8g.drawStr( 90, 48,  "WOLT");
         u8g.setFont(u8g_font_fub11);
         u8g.drawStr( 0, 11, rtc.getTimeStr());
-        u8g.drawStr( 62, 11, rtc.getDateStr());
+        u8g.drawStr( 63, 11, rtc.getDateStr());
+        u8g.drawStr( 0, 64,  "WILGOTN:");
+        u8g.drawStr( 112, 64,  "%");
+        u8g.drawStr( 84, 64,  wilgstr);
         u8g.setFont(u8g_font_fub17n);
         if (temperature > 38)
         {
           u8g.drawBitmapP( 0, 17, 2, 32, termometr);
-          u8g.drawStr( 15, 40,  temperatureString);
+          u8g.drawStr( 15, 38,  temperatureString);
           u8g.drawLine(6, 38, 6, 23);
         }
         else if (temperature < -5)
         {
           u8g.drawBitmapP( 0, 17, 2, 32, termometr);
-          u8g.drawStr( 15, 40,  temperatureString);
+          u8g.drawStr( 15, 38,  temperatureString);
 
         }
         else
         {
           u8g.drawBitmapP( 0, 17, 2, 32, termometr);
-          u8g.drawStr( 15, 40,  temperatureString);
+          u8g.drawStr( 15, 38,  temperatureString);
           u8g.drawLine(6, 38, 6, 38 - wystemp);
         }
         if (vin > 14.7)
         {
           u8g.drawBitmapP( 63, 17, 2, 32, aku05);
-          u8g.drawStr( 81, 40, napieciestr);
+          u8g.drawStr( 81, 38, napieciestr);
           u8g.drawBox(68, 41, 6, 4);
           u8g.drawBox(68, 23, 6, 15);
         }
         else if (vin < 12)
         {
           u8g.drawBitmapP( 63, 17, 2, 32, aku05);
-          u8g.drawStr( 81, 40, napieciestr);
+          u8g.drawStr( 81, 38, napieciestr);
         }
         else
         {
           u8g.drawBitmapP( 63, 17, 2, 32, aku05);
-          u8g.drawStr( 81, 40, napieciestr);
+          u8g.drawStr( 81, 38, napieciestr);
           u8g.drawLine(67, 45, 67, 45 - wysnap);
           u8g.drawLine(68, 45, 68, 45 - wysnap);
           u8g.drawLine(69, 45, 69, 45 - wysnap);
@@ -282,19 +283,48 @@ void loop() {
           u8g.drawLine(74, 45, 74, 45 - wysnap);
         }
       } while ( u8g.nextPage() );
-      if (buttonState == LOW && counter2 > 1)
+      if (buttonState == LOW && counter2 > 5)
       {
         wybor = 1;
         counter2 = 0;
+        delay(600);
       }
       break;
-      case 1:
+    case 1:
+    {
+
+      if (gps.location.isValid() == 1)
+      {
+      
+      dtostrf(gps.altitude.meters(), 7, 0, wyswysokosc);
+
+      predkosc=gps.speed.kmph();
+      if(predkosc<3)
+      {
+        predkosc=0.0;
+      }
+      dtostrf(predkosc, 6, 0, wyspredkosc);
+
+      unsigned long distanceToDom =
+        (unsigned long)TinyGPSPlus::distanceBetween(
+          gps.location.lat(),
+          gps.location.lng(),
+          DOM_LAT,
+          DOM_LON);
+      dodomu = distanceToDom / 1000.0;
+      dtostrf(dodomu, 4, 1, wysdom);
+      }
+      smartDelay(500);
+
       u8g.firstPage();
       do {
         u8g.drawLine(0, 13, 128, 13);
         u8g.drawLine(0, 51, 128, 51);
         u8g.drawBitmapP( -1, 17, 3, 32, krolik);
         u8g.drawBitmapP( 62, 17, 3, 32, gora);
+        u8g.setFont(u8g_font_5x8r);
+        u8g.drawStr( 28, 48,  "KM/H");
+        u8g.drawStr( 89, 48,  "M N.P.M.");
         u8g.setFont(u8g_font_fub11);
         u8g.drawStr( 0, 11, rtc.getTimeStr());
         u8g.drawStr( 63, 11, rtc.getDateStr());
@@ -304,19 +334,67 @@ void loop() {
         u8g.setFont(u8g_font_fub14n);
         u8g.drawStr( 83, 38, wyswysokosc);
         u8g.setFont(u8g_font_fub17n);
-        u8g.drawStr( 24, 40, wyspredkosc);
-        
+        u8g.drawStr( 24, 39, wyspredkosc);
+
       } while ( u8g.nextPage() );
-      if (buttonState == LOW && counter2 > 1)
+      if (buttonState == LOW && counter2 > 5)
       {
         wybor = 0;
         counter2 = 0;
       }
+      
+      break;
+    }
+    case 2:
+      if (gps.location.isValid() == 1)
+      {
+      dtostrf(gps.satellites.value(), 5, 0, wyssatelity);
+      
+      dtostrf( gps.location.lat(), 11, 6, wysszerokosc);
+      
+      dtostrf(gps.location.lng(), 12, 6, wysdlugosc);
+      }
+      smartDelay(500);
+
+
+      u8g.firstPage();
+      do {
+        u8g.setFont(u8g_font_fub11);
+        u8g.drawStr( 5, 11, "UKRYTE MENU");
+        u8g.setFont(u8g_font_5x8r);
+        u8g.drawStr( 12, 19, "Liczba satelit GPS:");
+        u8g.drawStr( 94, 19, wyssatelity);
+        u8g.drawStr( 6, 27, "Twoja aktualna pozycja:");
+        u8g.drawStr( 0, 36, "SZ:");
+        u8g.drawStr( 7, 36, wysszerokosc);
+        u8g.drawStr( 66, 36, "DL:");
+        u8g.drawStr( 68, 36, wysdlugosc);
+        if (zapisane == 0)
+        {
+          u8g.drawStr( 4, 47, "ABY ZAPISAC NOWA POZYCJE");
+          u8g.drawStr( 2, 55, "DOMU PRZYTRZYMAJ PRZYCISK");
+          u8g.drawStr( 27, 63, "PRZEZ 3 SEKUNDY");
+        }
+        else
+        {
+          u8g.drawStr( 10, 53, "ZAPISONO NOWA POZYCJE!");
+        }
+      } while ( u8g.nextPage() );
+      if (buttonState == LOW && counter2 > 5)
+      {
+        delay(2000);
+        if (buttonState == LOW)
+        {
+          szerokosc= gps.location.lat();
+          dlugosc=gps.location.lng();
+          EEPROM.updateDouble(0, szerokosc);
+          EEPROM.updateDouble(32, dlugosc);
+          zapisane = 1;
+        }
+      }
+      break;
   }
 
-
-
-  smartDelay(500);
 
 }
 
